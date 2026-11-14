@@ -1,0 +1,8 @@
+{
+  "name": "Remix THERMOS — AI Data Centre Thermal Intelligence",
+  "description": "Interactive AI-assisted thermal prediction and sustainable data centre operations demonstration for competition judges.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,653 @@
+# THERMOS 2.0 — STATE-AWARE, MULTI-EVENT DATA CENTRE SIMULATION
+
+## OBJECTIVE
+
+Upgrade the existing THERMOS application into an intelligent, continuously state-aware data-centre simulation capable of detecting, understanding, prioritising, and responding to multiple simultaneous operational problems.
+
+The existing interface and simulation are too simple and sequential. They demonstrate one problem at a time, which does not adequately demonstrate THERMOS's ability to coordinate thermal prediction, cooling, workload management, resource constraints, sensor estimation, and heat recovery.
+
+**Build a system that understands the complete current state of the simulated facility, recognises multiple interacting problems, coordinates a response, and demonstrates the consequences in real time.**
+
+Do not build a new conventional dashboard. Preserve the interactive virtual data centre as the primary experience.
+
+Do not merely add more animations, random alerts, or visual effects. Improve the underlying simulation orchestration, event detection, decision-making, and state tracking so the interface reflects what is actually happening.
+
+Implement the changes directly in the existing codebase.
+
+---
+
+# 1. FIRST: AUDIT THE EXISTING APPLICATION
+
+Before changing code, inspect the complete existing THERMOS project.
+
+Identify:
+- The simulation engine and its time-stepping mechanism.
+- The trained Random Forest model and its inference interface.
+- The twelve rack states and their relationships.
+- The controller's action-selection logic.
+- The temperature prediction and uncertainty calculations.
+- Cooling, airflow, workload, water, and electricity calculations.
+- Sensor-failure and airflow-restriction logic.
+- Heat-recovery calculations.
+- Existing scenario presets, event logs, benchmarks, and tests.
+- The connection between simulation state and the current user interface.
+
+Determine whether the application already has an event system or global state manager. Extend existing mechanisms where appropriate instead of introducing duplicate systems.
+
+Preserve verified calculations, trained model behaviour, and existing evidence tests.
+
+Do not silently replace actual simulation logic with hardcoded values or random outputs.
+
+Produce a short implementation plan, then implement and test the changes.
+
+---
+
+# 2. CREATE A SINGLE SOURCE OF TRUTH FOR THE FACILITY
+
+THERMOS must maintain one coherent, continuously updated representation of the entire simulated data centre.
+
+Create or extend a central facility-state object that tracks, at minimum:
+
+## Global state
+- Simulation timestamp.
+- Simulation speed and pause state.
+- Current scenario and active scenario parameters.
+- Outside temperature.
+- Incoming computing demand.
+- Total facility workload.
+- Total computing electricity.
+- Cooling electricity.
+- Water consumed and remaining water allowance.
+- Active cooling mode.
+- Current cooling settings.
+- Number of healthy, warming, critical, and sensor-unavailable racks.
+- Current operational warnings.
+- Active incidents.
+- Pending controller actions.
+- Applied controller actions.
+- Current resource constraints.
+- Heat-recovery state.
+- Current system mode.
+
+## Per-rack state
+
+Track R01 through R12 individually.
+
+For every rack, maintain:
+- Current simulated inlet temperature.
+- Estimated inlet temperature when direct measurement is unavailable.
+- Predicted temperature and prediction horizon.
+- Prediction uncertainty.
+- Configured temperature limit.
+- Current thermal-risk state.
+- Workload utilisation.
+- Mandatory workload.
+- Flexible workload.
+- Airflow restriction.
+- Sensor availability.
+- Supply-air conditions.
+- Cooling response.
+- Pending actions.
+- Active actions.
+- Recent events.
+- Historical measurements and predictions.
+
+Only store values that the existing model supports or can calculate reliably. Use explicit unavailable states for unsupported quantities.
+
+All interface components must derive their information from this shared facility state.
+
+Do not maintain separate, inconsistent temperature or workload values inside individual UI components.
+
+---
+
+# 3. MAKE THERMOS CONTINUOUSLY STATE-AWARE
+
+The application must know what is happening throughout the simulation, not just when a user clicks a button.
+
+Implement a recurring state-evaluation cycle.
+
+On each simulation step:
+
+1. Advance the simulation engine by the configured time increment.
+2. Update the temperatures and workloads of all twelve racks.
+3. Update sensor availability and estimated measurements.
+4. Generate or refresh temperature forecasts using the existing trained model.
+5. Calculate thermal risks and uncertainty margins.
+6. Check cooling capacity and resource constraints.
+7. Check workload placement, migration possibilities, and deadlines.
+8. Update heat-recovery feasibility and energy accounting.
+9. Detect new incidents.
+10. Update existing incidents and their severity.
+11. Identify incidents that have been resolved.
+12. Evaluate interactions between incidents.
+13. Generate candidate responses.
+14. Rank and coordinate responses using the existing controller logic and explicit safety constraints.
+15. Record decisions and outcomes.
+16. Publish the updated state to the visual interface.
+
+Use the actual simulation clock. Do not base scientific decisions on arbitrary browser timeouts.
+
+Keep animation timing separate from physical simulation timing. A visual animation may run quickly, but it must represent the actual simulated action and its consequences.
+
+The system must be able to pause, resume, step forward, reset, and inspect historical states without losing consistency.
+
+---
+
+# 4. IMPLEMENT A REAL MULTI-EVENT SYSTEM
+
+Replace the single-event demonstration pattern with an event manager capable of handling several active incidents simultaneously.
+
+An event must be generated from the actual simulated state or a configured scenario trigger.
+
+Do not randomly generate alerts independently of the simulation.
+
+Each incident should contain:
+
+- Unique incident ID.
+- Incident type.
+- Affected rack IDs or facility components.
+- Detection time.
+- Current severity.
+- Observed evidence.
+- Forecast evidence.
+- Relevant resource constraints.
+- Confidence or uncertainty, where supported.
+- Current status.
+- Recommended action.
+- Assigned response priority.
+- Linked incidents.
+- Applied actions.
+- Resolution condition.
+- Resolution time, once resolved.
+
+Use a clear incident lifecycle:
+
+DETECTED → ASSESSED → RESPONSE PROPOSED → APPROVED OR AUTOMATICALLY AUTHORISED → ACTION IN PROGRESS → VERIFYING → RESOLVED
+
+Where an incident cannot be safely resolved, allow it to remain active or escalate.
+
+A rejected action must not be recorded as applied.
+
+Avoid generating duplicate incidents every time the same condition remains active. Update the existing incident's severity and evidence instead.
+
+When a resolved condition occurs again, create a new incident or reopen the existing one according to a consistent, documented policy.
+
+## Incident types
+
+Support the following event types where the existing simulator can represent them:
+
+1. Rack overheating.
+2. Rapid temperature rise.
+3. Predicted thermal-limit violation.
+4. Restricted airflow.
+5. Sensor failure or missing measurements.
+6. High computing demand.
+7. Cooling-capacity pressure.
+8. Water-budget pressure.
+9. Electricity-consumption increase.
+10. Workload-placement conflict.
+11. Workload deadline risk.
+12. Migration-energy trade-off.
+13. Heat-recovery opportunity.
+14. Insufficient temperature difference for useful thermoelectric generation.
+15. Cooling or recovery action that fails to achieve its expected outcome.
+
+Do not claim to detect physical equipment failures that are not modelled. For unsupported conditions, describe them as simulated scenario events or omit them.
+
+---
+
+# 5. CREATE A COMPOUND-INCIDENT SCENARIO
+
+Build a primary demonstration scenario called:
+
+**COMPOUND STRESS TEST — HEAT, COMPUTING AND RESOURCE PRESSURE**
+
+This scenario must create several interacting problems at once rather than one isolated overheating event.
+
+Use the existing thermal engine, workload model, sensor logic, controller, and resource calculations.
+
+The scenario should combine the following conditions:
+
+### Incident A — Heatwave
+
+Outside temperature rises, increasing the thermal challenge for the facility.
+
+### Incident B — Computing surge
+
+Incoming computing demand rises across multiple racks.
+
+The additional demand must affect workload allocation and rack temperatures according to the existing engine.
+
+### Incident C — Local airflow restriction
+
+R07 retains its known airflow restriction, with R08 retaining its existing partial restriction.
+
+The controller must recognise that identical cooling actions may not produce identical results across racks.
+
+### Incident D — Sensor failure
+
+Introduce a sensor outage on R07 at the configured scenario time, such as 11:00 in the existing six-hour simulation.
+
+The system must use the existing estimation logic and uncertainty margins.
+
+The user interface must distinguish between a directly measured temperature and an estimated temperature.
+
+### Incident E — Limited cooling water
+
+Reduce the available water budget so that wet cooling cannot be used without considering its remaining allowance and cost.
+
+The controller must evaluate dry-cooling alternatives and explain the electricity trade-off where the model supports it.
+
+### Incident F — Flexible workload and deadline pressure
+
+Introduce or increase flexible computing work with defined deadlines.
+
+THERMOS must evaluate whether moving or postponing eligible work can reduce thermal risk without causing unacceptable deadline violations or migration costs.
+
+### Incident G — Heat-recovery opportunity
+
+Provide a heat-recovery demand or destination where supported by the existing model.
+
+The system should evaluate whether useful thermal recovery is feasible under the current temperatures and operating conditions.
+
+Thermoelectric generation must remain subject to the modelled temperature difference and accounting rules.
+
+## Important scenario requirement
+
+These conditions must overlap in simulated time.
+
+The scenario should create multiple active incidents with different affected racks, different severities, and competing resource implications.
+
+The precise temperatures, workloads, water limits, and event times must be selected using the existing simulator's valid parameter ranges.
+
+Do not use arbitrary extreme values that break the thermal equations or make the scenario impossible to run.
+
+Before finalising the preset, run it through the engine and tune it until it produces a meaningful, repeatable compound challenge.
+
+The scenario must remain reproducible across resets.
+
+---
+
+# 6. MAKE THE SCENARIO FEEL LIVE
+
+The data centre should visibly change as incidents develop.
+
+Use the simulation state to drive:
+
+- Rack heat colours.
+- Temperature labels.
+- Forecast warnings.
+- Airflow animations.
+- Workload indicators.
+- Sensor-status indicators.
+- Cooling-unit states.
+- Resource-availability indicators.
+- Incident markers.
+- Recovery-system activity.
+
+When several racks heat up, the scene must show multiple racks changing independently.
+
+When an individual sensor fails, display that sensor's unavailable state without pretending that all temperature information is lost.
+
+When cooling water becomes constrained, the water indicator must change according to actual usage.
+
+When flexible workload moves, show the affected racks and the amount transferred.
+
+When a heat-recovery opportunity becomes feasible, show the associated pathway and calculated quantities.
+
+All changes must reflect the simulation. Do not force the scene into a successful outcome for dramatic effect.
+
+The user must be able to click any affected rack while other incidents remain active.
+
+---
+
+# 7. BUILD A GLOBAL SITUATIONAL-AWARENESS PANEL
+
+Add a small, persistent panel or collapsible strip called:
+
+**THERMOS SITUATIONAL AWARENESS**
+
+It should summarise what the system currently knows about the whole facility.
+
+Show:
+- Active incidents.
+- Highest current thermal risk.
+- Number of affected racks.
+- Sensor availability.
+- Remaining water allowance.
+- Current computing-demand pressure.
+- Pending decisions.
+- Actions in progress.
+- Most recent verified outcome.
+
+Keep this compact. It must not become another large dashboard.
+
+Provide a short, dynamically generated status sentence based on actual facility state.
+
+Example:
+
+"Three incidents active. R07 has the highest thermal risk. Sensor data is unavailable on R07, so the temperature estimate carries increased uncertainty. Water restrictions limit the cooling options. THERMOS is evaluating coordinated responses."
+
+This is an example of the desired style, not fixed text.
+
+The summary must change when incidents appear, worsen, resolve, or when the available resources change.
+
+Never display a fixed sentence that claims to understand the facility when the underlying state does not support it.
+
+---
+
+# 8. IMPLEMENT INCIDENT CORRELATION AND PRIORITISATION
+
+THERMOS must recognise that several incidents may be related.
+
+For example:
+
+- A heatwave and workload surge can jointly increase rack temperatures.
+- Restricted airflow can make one rack more vulnerable than its neighbours.
+- Sensor failure can increase uncertainty about the actual thermal risk.
+- Water restrictions can remove some cooling options.
+- Workload migration can relieve one rack but increase load and heat elsewhere.
+- Migration consumes energy.
+- Cooling decisions can change both electricity and water consumption.
+- Heat recovery depends on the available heat, temperature conditions, and demand.
+
+Build a transparent incident-correlation layer.
+
+For each active incident, determine:
+- Its immediate severity.
+- Its predicted future impact.
+- Which other incidents influence it.
+- Whether a shared response can address multiple incidents.
+- Which resources the response consumes.
+- Whether the response creates a new risk elsewhere.
+
+Create a prioritisation policy that considers:
+1. Immediate thermal danger.
+2. Predicted thermal-limit violations.
+3. Uncertainty caused by sensor failures.
+4. Cooling and water constraints.
+5. Workload deadlines.
+6. Electricity and migration costs.
+7. Recovery opportunities that do not compromise operational safety.
+
+Do not treat these as arbitrary weighted scores without explanation.
+
+Use hard safety and resource constraints where the existing model supports them, and use transparent scoring or ranking for trade-offs among feasible actions.
+
+Do not claim that the controller uses global optimisation unless that is actually implemented.
+
+Show the main reason an incident receives its priority.
+
+---
+
+# 9. COORDINATE MULTIPLE RESPONSES
+
+THERMOS must not generate an unrelated intervention for every alert.
+
+Create a response coordinator that examines the entire current facility state before selecting actions.
+
+It must evaluate whether:
+- One cooling adjustment can help multiple racks.
+- A local airflow adjustment is more appropriate for a restricted rack.
+- Flexible workload can move away from a high-risk rack.
+- Receiving racks have enough capacity and acceptable thermal conditions.
+- Moving work would create new thermal risks.
+- Dry cooling is preferable under the current water constraint.
+- Wet cooling is feasible within the remaining budget.
+- Several actions can safely be combined.
+- An action should be delayed because another action changes its expected result.
+- The controller needs additional simulation steps before deciding whether a previous action worked.
+
+Evaluate candidate actions through the existing decision engine.
+
+Where supported, compare candidate outcomes for:
+- Forecast peak temperature.
+- Thermal-limit violations.
+- Cooling electricity.
+- Water use.
+- Workload completion.
+- Missed deadlines.
+- Migration energy.
+- Heat-recovery output.
+
+Use a consistent simulation state and consistent accounting for every candidate.
+
+Do not apply conflicting actions simultaneously. For example, a new cooling decision should not silently overwrite another pending decision without recording why.
+
+Group compatible actions into a coordinated response plan.
+
+The plan must state:
+- Which incidents it addresses.
+- Which racks it affects.
+- Which actions it will execute.
+- What resources it consumes.
+- What risks remain.
+- How success will be verified.
+
+---
+
+# 10. ADD A FAST-RESPONSE DEMONSTRATION
+
+Create a prominent but minimal control:
+
+**RUN COMPOUND STRESS TEST**
+
+When clicked:
+
+1. Reset the simulation to the reproducible compound-stress scenario.
+2. Start the scenario at an appropriate speed.
+3. Advance the simulation using the actual engine.
+4. Let the event manager detect incidents as conditions arise.
+5. Populate the active incident list.
+6. Show the controller evaluating the combined problem.
+7. Generate a coordinated intervention proposal.
+8. Request approval according to the selected operator-control mode.
+9. Execute approved actions.
+10. Continue simulating to measure the result.
+11. Display a compact outcome comparison.
+
+The demonstration should show the system handling multiple simultaneous issues in a short, judge-friendly session.
+
+Provide two operating modes:
+
+### Interactive mode
+
+Pause at important decisions and ask the judge to approve or reject the proposed plan.
+
+### Demonstration mode
+
+Automatically progress through the scenario and execute permitted controller actions so the audience can see the complete response sequence.
+
+In demonstration mode, label automatically authorised actions clearly. Do not imply that the judge approved them.
+
+Do not skip the real simulation or fabricate results to make the walkthrough finish faster.
+
+Simulation speed may be increased for presentation purposes, but physical simulation time and UI animation time must remain distinct.
+
+---
+
+# 11. MAKE THE RESPONSE VISUALLY TRACEABLE
+
+When THERMOS acts, the user must be able to understand exactly what happened.
+
+For every action:
+
+1. Highlight the affected rack or component.
+2. Display the reason for the action.
+3. Show the selected control change.
+4. Animate the physical representation of that change.
+5. Advance the actual simulation.
+6. Display the new measurements or estimates.
+7. Compare the result with the previous state.
+8. Verify whether the target condition was achieved.
+
+Examples:
+
+**Cooling adjustment**
+Show the supply-air setpoint or airflow change, then show the actual subsequent thermal response.
+
+**Workload migration**
+Animate work moving between racks. Show the source and destination, workload quantity, and migration-energy cost when available.
+
+**Sensor failure**
+Show the unavailable sensor and the corresponding estimated temperature with its uncertainty.
+
+**Water constraint**
+Show the remaining water budget and explain why the controller selected a feasible cooling option.
+
+**Heat recovery**
+Animate the modelled heat pathway and display the resulting thermal and electrical accounting separately.
+
+Each animation must correspond to an actual state transition.
+
+If an action does not achieve its target, show the failure or incomplete outcome and let the controller reassess the state.
+
+---
+
+# 12. VERIFY ACTIONS AND HANDLE FAILURE
+
+A decision is not successful merely because an action was selected.
+
+After applying an action, enter a verification phase.
+
+Evaluate:
+- Whether the targeted rack's temperature is moving in the intended direction.
+- Whether predicted risk has decreased.
+- Whether another rack has become more vulnerable.
+- Whether water or electricity constraints have been exceeded.
+- Whether workload deadlines remain feasible.
+- Whether the expected heat-recovery outcome occurred.
+
+Use the engine's actual equations and subsequent simulation steps.
+
+If the action is ineffective:
+1. Keep the incident active.
+2. Record the failed or incomplete response.
+3. Recalculate the facility state.
+4. Re-evaluate available actions.
+5. Propose a revised response or escalate.
+
+Do not declare an incident resolved simply because the controller issued a command.
+
+Define explicit, model-appropriate resolution conditions and apply them consistently.
+
+---
+
+# 13. UPDATE THE USER INTERFACE WITHOUT ADDING CLUTTER
+
+Retain the interactive virtual data centre as the primary screen.
+
+Add only these essential new elements:
+
+- A compact situational-awareness summary.
+- Small incident markers attached to affected racks.
+- A collapsible active-incident list.
+- A compact coordinated-response panel.
+- A chronological event timeline.
+- A minimal simulation-mode selector.
+
+When the user clicks an incident, highlight its affected racks.
+
+When the user clicks a rack, show that rack's current state and related incidents.
+
+When the user selects a proposed action, highlight its expected targets and resource implications.
+
+Avoid adding a new page for every incident type.
+
+Keep model metrics, detailed benchmark reports, and technical evidence in the existing secondary analysis view.
+
+The main screen should remain a visual engineering simulation, not become another dashboard.
+
+---
+
+# 14. PERFORMANCE AND SIMULATION SPEED
+
+The application must demonstrate responsiveness when several incidents are active.
+
+Implement efficient state updates:
+- Reuse the existing simulation engine.
+- Avoid running duplicate predictions for the same state unless needed.
+- Separate simulation calculations from rendering.
+- Avoid recomputing unrelated components on every frame.
+- Batch UI updates when appropriate.
+- Use deterministic event processing.
+- Avoid excessive particle effects or animations.
+- Ensure pausing the simulation also pauses physical state progression.
+
+If the existing model is inexpensive enough to evaluate synchronously, keep the architecture simple. If performance testing identifies bottlenecks, optimise the measured bottleneck rather than adding unnecessary infrastructure.
+
+Measure the actual execution time of simulation steps and scenario runs.
+
+Display simulation speed separately from wall-clock execution time.
+
+Do not advertise that THERMOS is faster than competing systems unless a valid benchmark supports that claim.
+
+The goal is to demonstrate how quickly the existing prototype can evaluate and coordinate responses within its tested scope.
+
+---
+
+# 15. ACCEPTANCE TESTS
+
+Do not declare completion until these tests have been performed.
+
+### State awareness
+- The facility state remains consistent across the scene, incident panel, controller, and timeline.
+- Rack temperatures and workloads update from the actual engine.
+- The system summary reflects current conditions rather than static text.
+
+### Multi-event operation
+- Several different incidents can be active simultaneously.
+- Multiple racks can be affected at the same time.
+- Duplicate alerts are suppressed or updated consistently.
+- Related incidents can be linked.
+- Incident severity changes as conditions change.
+
+### Coordinated control
+- The controller evaluates the facility as a whole.
+- Compatible actions can be grouped into a response plan.
+- Conflicting actions are detected and handled explicitly.
+- Water, electricity, workload, and thermal consequences are accounted for.
+- Failed actions trigger reassessment instead of false success.
+
+### User interaction
+- The judge can inspect individual racks during an active compound incident.
+- Interactive mode requests approval before applying the proposed intervention.
+- Demonstration mode clearly identifies automatically authorised actions.
+- Pause, resume, reset, and timeline inspection work correctly.
+
+### Scientific validity
+- Predictions use the existing trained model.
+- Sensor failure increases uncertainty according to the existing logic.
+- Thermal responses come from the simulation engine.
+- Heat-recovery accounting remains physically interpretable.
+- Results are not fabricated to make THERMOS appear successful.
+
+### Reliability
+- The existing test suite still passes or any regression is explained and corrected.
+- The compound-stress scenario is reproducible.
+- The application runs without paid services or unnecessary API dependencies.
+- The interface remains usable during concurrent incidents.
+
+---
+
+# FINAL DELIVERABLE
+
+Modify the existing THERMOS application directly.
+
+Deliver:
+1. A state-aware facility model.
+2. A multi-incident event manager.
+3. Incident correlation and prioritisation.
+4. A coordinated response planner connected to the existing controller.
+5. A reproducible compound-stress scenario.
+6. Interactive and demonstration operating modes.
+7. Visible, traceable response animations.
+8. Post-action verification and reassessment.
+9. A clean, minimal interface.
+10. Working tests and a summary of what was implemented.
+
+Do not stop at a visual mockup, a list of simulated alerts, or a static set of incidents.
+
+The final application must genuinely maintain awareness of the simulated facility, detect multiple simultaneous problems, coordinate supported responses, execute those responses through the existing simulation engine, and verify their outcomes.
+
+**The defining demonstration is this: several problems develop together, THERMOS understands how they interact, chooses a coordinated response, visibly executes it, and proves through the simulation what happened next.**

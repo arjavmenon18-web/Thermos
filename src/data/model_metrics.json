@@ -1,0 +1,92 @@
+{
+  "name": "Random Forest + Physics Hybrid / 15-minute thermal forecast",
+  "target": "delta_temperature",
+  "seed": 42,
+  "dataset_seed": 20261021,
+  "horizon_minutes": 15,
+  "decision_steps_ahead": 3,
+  "step_minutes": 5,
+  "trees": 24,
+  "max_depth": 11,
+  "calibration_q95": 0.8248612786442031,
+  "features": [
+    "current_inlet_c",
+    "rack_load",
+    "neighbor_load",
+    "supply_c",
+    "airflow_fraction",
+    "outside_c",
+    "known_airflow_restriction"
+  ],
+  "feature_ranges": [
+    [
+      17,
+      43
+    ],
+    [
+      0,
+      1
+    ],
+    [
+      0,
+      1
+    ],
+    [
+      20,
+      24
+    ],
+    [
+      0.45,
+      1
+    ],
+    [
+      20,
+      53
+    ],
+    [
+      0,
+      0.42
+    ]
+  ],
+  "metrics": {
+    "hybrid_mae_c": 0.3123742245664902,
+    "hybrid_rmse_c": 0.43725154535151217,
+    "hybrid_r2": 0.9661856691580168,
+    "physics_mae_c": 0.09695140656449876,
+    "physics_rmse_c": 0.19649393275626323,
+    "rf_mae_c": 0.953738192920098,
+    "rf_rmse_c": 1.2559043157194798,
+    "persistence_mae_c": 2.1215135842718342,
+    "persistence_rmse_c": 2.6355140709433593,
+    "test_95_interval_coverage_pct": 94.30555555555556,
+    "test_samples": 8640,
+    "calibration_samples": 8640,
+    "train_samples": 34560,
+    "train_episodes": 120,
+    "calibration_episodes": 30,
+    "test_episodes": 30
+  },
+  "scenario_breakdown_mae_c": {
+    "restricted": 0.29442882618274924,
+    "compound": 0.394058779257153,
+    "normal": 0.25843463275823625,
+    "heatwave": 0.29346906630968633
+  },
+  "blend_weights": {
+    "random_forest_residual": 0.28,
+    "physics_lumped_ode": 0.72
+  },
+  "feature_importance": [
+    0.20951446529303422,
+    0.06592772958257852,
+    0.013388524012020628,
+    0.556584767328746,
+    0.11953205815591766,
+    0.01150388449907865,
+    0.023548571128624327
+  ],
+  "data_source": "Synthetic THERMOS simulator v3.0.0; generated for scientific evaluation. Not validated commercial data-centre performance.",
+  "split": "Strict episode-level partitioning: Episodes 0-119 train; 120-149 calibration; 150-179 held-out test. No episode crosses partition boundaries.",
+  "validation_protocol": "Four-way matched evaluation on identical inputs: Persistence, Physics-Only, Pure RF, and Hybrid.",
+  "execution_date": "2026-11-10T07:18:45.210Z"
+}
