@@ -37,10 +37,10 @@ export const ResponsiveSheet: React.FC<ResponsiveSheetProps> = ({
         <aside
           data-interactive="true"
           aria-label={ariaLabel}
-          className={`absolute inset-x-0 bottom-0 z-30 ${mobileMaxHeightClass} flex flex-col bg-white/99 border-t border-[#DCDED8] rounded-t-xl shadow-[0_-10px_30px_rgba(24,24,27,0.12)] text-[#18181B] pointer-events-auto animate-sheetUp`}
+          className={`absolute inset-x-0 bottom-0 z-30 ${mobileMaxHeightClass} flex flex-col bg-white/99 border-t border-[#DCDED8] rounded-t-2xl shadow-[0_-10px_30px_rgba(24,24,27,0.12)] text-[#18181B] pointer-events-auto animate-sheetUp`}
         >
-          <div className="pt-1.5 pb-0.5 flex justify-center shrink-0">
-            <span className="w-9 h-1 rounded-full bg-[#D4D7D0]" aria-hidden="true" />
+          <div className="pt-2 pb-0.5 flex justify-center shrink-0">
+            <span className="w-10 h-1 rounded-full bg-[#D4D7D0]" aria-hidden="true" />
           </div>
           <div className="shrink-0">{header}</div>
           <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">{children}</div>

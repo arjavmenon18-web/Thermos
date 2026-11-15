@@ -14,10 +14,17 @@ import {
   type ExplainableTarget,
 } from './simulation/explanationEngine';
 import { PresentationPlugin } from './components/PresentationPlugin';
+import { ThermosLockScreen } from './components/ThermosLockScreen';
+import { MobilePhoneExperience, type PhoneTab } from './components/MobilePhoneExperience';
 
 export default function App() {
   const sim = useSimulation();
   const viewport = useViewport();
+
+  // Desktop-only split-wall entrance — opens from both ends on click
+  const [isLocked, setIsLocked] = useState<boolean>(true);
+  // Phone-only navigation tab — defaults to plain-English explanations
+  const [phoneTab, setPhoneTab] = useState<PhoneTab>('guide');
 
   // Single contextual UI state — 'none' on initial load so the 3D facility is the interface
   const [activeTarget, setActiveTarget] = useState<ActiveContextualTarget>('none');
@@ -141,9 +148,10 @@ export default function App() {
     return 'facility';
   }, [activeTarget]);
 
-  // Keyboard shortcuts (Space = Toggle THERMOS Active/Paused, Right = Step +5m when clock frozen, Escape = Close contextual panel)
+  // Keyboard shortcuts (Space = Toggle THERMOS Active/Paused when unlocked, Right = Step +5m when clock frozen, Escape = Close contextual panel)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!viewport.isMobile && isLocked) return;
       if (['INPUT', 'SELECT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) {
         return;
       }
@@ -162,7 +170,7 @@ export default function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [sim]);
+  }, [sim, isLocked, viewport.isMobile]);
 
   const activePathwayKind: PathwayPanelKind | null =
     activeTarget === 'compute' ||
@@ -177,6 +185,7 @@ export default function App() {
     (activeTarget === 'rack' ||
       activeTarget === 'core' ||
       activeTarget === 'incident' ||
+      activeTarget === 'sim-controls' ||
       activePathwayKind !== null);
 
   const currentExplainableTarget: ExplainableTarget = useMemo(() => {
@@ -268,36 +277,47 @@ export default function App() {
 
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-[#F7F7F2] text-[#18181B]">
-      {/* Full-Bleed 3D Data-Centre Digital Twin */}
-      <DataCentreScene
-        temps={sim.displayTemps}
-        loads={sim.displayLoads}
-        predictions={sim.displayPredictions}
-        uncertainties={sim.displayUncertainties}
-        activeSensors={sim.displaySensors}
-        config={sim.config}
-        selectedRackId={activeTarget === 'rack' ? sim.selectedRackId : null}
-        onSelectRack={handleSelectRack}
-        selectedIncidentId={activeTarget === 'incident' ? sim.selectedIncidentId : null}
-        onSelectIncident={handleSelectIncident}
-        revealTruth={sim.revealTruth}
-        minute={sim.minutesPassed}
-        viewMode={effectiveViewMode}
-        activeContextualTarget={activeTarget}
-        onSelectCore={handleToggleCore}
-        onSelectPathway={handleTogglePathway}
-        onOpenResults={() => handleOpenDrawer('comparison')}
-        onCanvasBackgroundClick={handleCloseAllContextual}
-        currentRecord={sim.currentRecord}
-        facility={sim.facilityState}
-        activeWorkloadPackets={sim.activePackets}
-        viewport={viewport}
-        hasActiveMobileSheet={hasActiveMobileSheet}
-        connectedRackIds={explanation?.connectedRackIds}
-        highlightedPathways={explanation?.highlightedPathways}
-      />
+      {/* Full-Bleed 3D Data-Centre Digital Twin (always mounted on desktop; mounted on demand on phone Live 3D tab) */}
+      {(!viewport.isMobile || phoneTab === '3d') && (
+        <DataCentreScene
+          temps={sim.displayTemps}
+          loads={sim.displayLoads}
+          predictions={sim.displayPredictions}
+          uncertainties={sim.displayUncertainties}
+          activeSensors={sim.displaySensors}
+          config={sim.config}
+          selectedRackId={activeTarget === 'rack' ? sim.selectedRackId : null}
+          onSelectRack={handleSelectRack}
+          selectedIncidentId={activeTarget === 'incident' ? sim.selectedIncidentId : null}
+          onSelectIncident={handleSelectIncident}
+          revealTruth={sim.revealTruth}
+          minute={sim.minutesPassed}
+          viewMode={effectiveViewMode}
+          activeContextualTarget={activeTarget}
+          onSelectCore={handleToggleCore}
+          onSelectPathway={handleTogglePathway}
+          onOpenResults={() => handleOpenDrawer('comparison')}
+          onLockScreen={
+            viewport.isMobile
+              ? undefined
+              : () => {
+                  handleCloseAllContextual();
+                  setActiveDrawer('none');
+                  setIsLocked(true);
+                }
+          }
+          onCanvasBackgroundClick={handleCloseAllContextual}
+          currentRecord={sim.currentRecord}
+          facility={sim.facilityState}
+          activeWorkloadPackets={sim.activePackets}
+          viewport={viewport}
+          hasActiveMobileSheet={hasActiveMobileSheet}
+          connectedRackIds={explanation?.connectedRackIds}
+          highlightedPathways={explanation?.highlightedPathways}
+        />
+      )}
 
-      {/* Discreet THERMOS Play/Pause & Digital Twin Clock Control */}
+      {/* Discreet THERMOS Play/Pause & Digital Twin Clock Control (Desktop) */}
       <MinimalSimControl
         isOpen={activeTarget === 'sim-controls'}
         onToggleOpen={handleToggleSimControls}
@@ -322,8 +342,46 @@ export default function App() {
         onScrub={(step) => sim.setCursor(step)}
         isComplete={sim.isComplete}
         isMobile={viewport.isMobile}
-        hidePill={hasActiveMobileSheet}
+        hidePill={viewport.isMobile || hasActiveMobileSheet}
       />
+
+      {/* Explanation-First Phone Experience (< 768px) */}
+      {viewport.isMobile && (
+        <MobilePhoneExperience
+          activeTab={phoneTab}
+          onChangeTab={(nextTab) => {
+            handleCloseAllContextual();
+            setPhoneTab(nextTab);
+          }}
+          facility={sim.facilityState}
+          currentRecord={sim.currentRecord}
+          states={sim.states}
+          config={sim.config}
+          thermosEnabled={sim.thermosEnabled}
+          onToggleThermos={() => sim.setThermosEnabled(!sim.thermosEnabled)}
+          isPlaying={sim.isPlaying}
+          onTogglePlay={() => sim.setIsPlaying(!sim.isPlaying)}
+          onStepForward={sim.stepForward}
+          onReset={() => sim.resetSimulation()}
+          scenarioKey={sim.scenarioKey}
+          onSelectScenario={sim.selectScenario}
+          systemMode={sim.systemMode}
+          onChangeSystemMode={sim.setSystemMode}
+          timeString={sim.timeString}
+          onInspectRackIn3D={(rackId) => {
+            setPhoneTab('3d');
+            handleSelectRack(rackId);
+          }}
+          onInspectPathwayIn3D={(kind) => {
+            setPhoneTab('3d');
+            handleSelectPathway(kind);
+          }}
+          onOpenFullDrawer={(drawer) => handleOpenDrawer(drawer)}
+          onApprovePlan={() => sim.authorisePendingPlan(false)}
+          onRejectPlan={() => sim.rejectPendingPlan()}
+          hideChrome={hasActiveMobileSheet || activeDrawer !== 'none'}
+        />
+      )}
 
       {/* Contextual Panel: Individual Server Rack (R01–R12) */}
       <RackInspector
@@ -427,6 +485,15 @@ export default function App() {
 
       {/* Discreet HOPE '26 UN SDG 9/11/12 Sustainability Reference */}
       <PresentationPlugin />
+
+      {/* Desktop-Only Split-Wall Entrance */}
+      {!viewport.isMobile && (
+        <ThermosLockScreen
+          isLocked={isLocked}
+          onUnlock={() => setIsLocked(false)}
+          isMobile={false}
+        />
+      )}
     </main>
   );
 }

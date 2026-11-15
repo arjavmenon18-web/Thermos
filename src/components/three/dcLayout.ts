@@ -110,11 +110,11 @@ export function getAspectAdjustedCameraPreset(
     };
   }
 
-  const distScale = Math.min(2.22, Math.pow(REFERENCE_CAMERA_ASPECT / safeAspect, 0.84));
+  const distScale = Math.min(2.26, Math.pow(REFERENCE_CAMERA_ASPECT / safeAspect, 0.85));
   const portraitBlend = Math.min(1, (REFERENCE_CAMERA_ASPECT - safeAspect) / 0.9);
   // Gently pull X target closer to plinth center (0.35) on very narrow portrait screens so both flanks fit
-  const adjTargetX = preset.target.x * (1 - 0.35 * portraitBlend) + 0.35 * (0.35 * portraitBlend);
-  const adjTargetY = preset.target.y - 0.1 * portraitBlend;
+  const adjTargetX = preset.target.x * (1 - 0.38 * portraitBlend) + 0.35 * (0.38 * portraitBlend);
+  const adjTargetY = preset.target.y - 0.22 * portraitBlend;
   const adjTargetZ = preset.target.z;
 
   const dx = preset.pos.x - preset.target.x;

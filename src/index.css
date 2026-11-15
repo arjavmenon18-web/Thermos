@@ -151,3 +151,15 @@
 .thermos-idle-breathe {
   animation: thermosSlowPulse 3.2s ease-in-out infinite;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fadeIn,
+  .animate-slideLeft,
+  .animate-slideUp,
+  .animate-sheetUp,
+  .thermos-strip-flow,
+  .thermos-strip-fast,
+  .thermos-idle-breathe {
+    animation: none !important;
+  }
+}

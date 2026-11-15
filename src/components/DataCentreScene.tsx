@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo, useEffect, useCallback } from 'react'
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Lock } from 'lucide-react';
 import type {
   ThermosConfig,
   StepRecord,
@@ -63,7 +63,8 @@ export type ActiveContextualTarget =
   | 'heat'
   | 'recovery'
   | 'cooling'
-  | 'sim-controls';
+  | 'sim-controls'
+  | 'mobile-racks';
 
 interface DataCentreSceneProps {
   temps: number[];
@@ -84,6 +85,7 @@ interface DataCentreSceneProps {
   onSelectCore: () => void;
   onSelectPathway: (kind: PathwayPanelKind) => void;
   onOpenResults?: () => void;
+  onLockScreen?: () => void;
   onCanvasBackgroundClick: () => void;
   cameraPresetOverride?: CameraPreset3D | null;
   currentRecord: StepRecord | null;
@@ -147,6 +149,7 @@ export const DataCentreScene: React.FC<DataCentreSceneProps> = ({
   onSelectCore,
   onSelectPathway,
   onOpenResults,
+  onLockScreen,
   onCanvasBackgroundClick,
   cameraPresetOverride = null,
   currentRecord,
@@ -309,6 +312,10 @@ export const DataCentreScene: React.FC<DataCentreSceneProps> = ({
 
     const isSoftwareGl = detectSoftwareWebGL();
 
+    const initW = Math.max(1, mountEl.clientWidth);
+    const initH = Math.max(1, mountEl.clientHeight);
+    const isInitialMobile = initW < 768;
+
     const renderer = new THREE.WebGLRenderer({
       antialias: !isSoftwareGl,
       powerPreference: 'high-performance',
@@ -316,12 +323,12 @@ export const DataCentreScene: React.FC<DataCentreSceneProps> = ({
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.94;
-    renderer.setPixelRatio(isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setPixelRatio(
+      isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, isInitialMobile ? 1.5 : 2)
+    );
     renderer.shadowMap.enabled = !isSoftwareGl;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    const initW = Math.max(1, mountEl.clientWidth);
-    const initH = Math.max(1, mountEl.clientHeight);
     renderer.setSize(initW, initH);
     renderer.domElement.style.display = 'block';
     renderer.domElement.style.width = '100%';
@@ -392,7 +399,8 @@ export const DataCentreScene: React.FC<DataCentreSceneProps> = ({
     scene.add(keyLight.target);
     if (!isSoftwareGl) {
       keyLight.castShadow = true;
-      keyLight.shadow.mapSize.set(1024, 1024);
+      const shadowRes = isInitialMobile ? 512 : 1024;
+      keyLight.shadow.mapSize.set(shadowRes, shadowRes);
       const sd = 7.4;
       keyLight.shadow.camera.left = -sd;
       keyLight.shadow.camera.right = sd;
@@ -742,7 +750,9 @@ export const DataCentreScene: React.FC<DataCentreSceneProps> = ({
 
       camera.aspect = nextAspect;
       camera.updateProjectionMatrix();
-      renderer.setPixelRatio(isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setPixelRatio(
+        isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, w < 768 ? 1.5 : 2)
+      );
       renderer.setSize(w, h);
 
       if (!userAdjustedOrbit) {
@@ -1912,10 +1922,12 @@ export const DataCentreScene: React.FC<DataCentreSceneProps> = ({
           );
         })}
 
-        {/* Interactive CRAH Cooling Equipment World Anchor + Water Incident Marker */}
+        {/* Interactive CRAH Cooling Equipment World Anchor + Water Incident Marker (Desktop/Tablet) */}
         <div
           ref={crahBadgeRef}
-          className="absolute top-0 left-0 flex flex-col items-center gap-0.5 will-change-transform"
+          className={`absolute top-0 left-0 flex flex-col items-center gap-0.5 will-change-transform ${
+            isMobile ? 'hidden' : ''
+          }`}
         >
           {waterIncident && (
             <button
@@ -1968,10 +1980,12 @@ export const DataCentreScene: React.FC<DataCentreSceneProps> = ({
           </button>
         </div>
 
-        {/* Interactive Heat Reuse Equipment World Anchor */}
+        {/* Interactive Heat Reuse Equipment World Anchor (Desktop/Tablet) */}
         <div
           ref={recoveryBadgeRef}
-          className="absolute top-0 left-0 flex flex-col items-center will-change-transform"
+          className={`absolute top-0 left-0 flex flex-col items-center will-change-transform ${
+            isMobile ? 'hidden' : ''
+          }`}
         >
           <button
             type="button"
@@ -2034,10 +2048,12 @@ export const DataCentreScene: React.FC<DataCentreSceneProps> = ({
           </div>
         </div>
 
-        {/* Interactive THERMOS Core World Anchor + Subtle Pending-Plan Cue */}
+        {/* Interactive THERMOS Core World Anchor + Subtle Pending-Plan Cue (Desktop/Tablet) */}
         <div
           ref={coreBadgeRef}
-          className="absolute top-0 left-0 flex flex-col items-center gap-0.5 will-change-transform"
+          className={`absolute top-0 left-0 flex flex-col items-center gap-0.5 will-change-transform ${
+            isMobile ? 'hidden' : ''
+          }`}
         >
           {facilitySurgeIncident && (
             <button
@@ -2124,7 +2140,7 @@ export const DataCentreScene: React.FC<DataCentreSceneProps> = ({
             onSelectPathway('compute');
           }}
           className={`${
-            isMobile && hasActiveMobileSheet ? 'pointer-events-none' : 'pointer-events-auto'
+            isMobile ? 'hidden' : isMobile && hasActiveMobileSheet ? 'pointer-events-none' : 'pointer-events-auto'
           } absolute top-0 left-0 flex items-center gap-1 rounded-full border shadow-[0_1px_3px_rgba(24,24,27,0.08)] font-mono text-[8.5px] font-semibold leading-none whitespace-nowrap cursor-pointer transition-all will-change-transform ${
             isComputeSelected
               ? 'px-2 py-0.5 bg-[#18181B] text-white border-[#18181B]'
@@ -2158,7 +2174,7 @@ export const DataCentreScene: React.FC<DataCentreSceneProps> = ({
             onSelectPathway('heat');
           }}
           className={`${
-            isMobile && hasActiveMobileSheet ? 'pointer-events-none' : 'pointer-events-auto'
+            isMobile ? 'hidden' : isMobile && hasActiveMobileSheet ? 'pointer-events-none' : 'pointer-events-auto'
           } absolute top-0 left-0 flex items-center gap-1 rounded-full border shadow-[0_1px_3px_rgba(24,24,27,0.08)] font-mono text-[8.5px] font-semibold leading-none whitespace-nowrap cursor-pointer transition-all will-change-transform ${
             isHeatSelected
               ? 'px-2 py-0.5 bg-[#18181B] text-white border-[#18181B]'
@@ -2176,127 +2192,203 @@ export const DataCentreScene: React.FC<DataCentreSceneProps> = ({
         </button>
       </div>
 
-      {/* Restrained Original Top-Left THERMOS Lockup, Inline Status & Quiet Thermal Key */}
-      <div
-        data-interactive="true"
-        className={`absolute left-3.5 sm:left-4 top-3.5 z-20 flex flex-col items-start gap-1.5 pointer-events-auto transition-opacity duration-150 ${
-          isMobile && hasActiveMobileSheet ? 'opacity-0 pointer-events-none' : 'opacity-100'
-        }`}
-      >
-        <div className="flex items-center bg-white/92 border border-[#DFE2DC] rounded-md shadow-[0_1px_4px_rgba(24,24,27,0.06)] overflow-hidden">
-          <button
-            type="button"
-            onClick={() => {
-              onCanvasBackgroundClick();
-              handleResetCamera();
-            }}
-            className="px-2.5 h-8 flex items-center gap-1.5 text-xs font-bold tracking-tight text-[#18181B] hover:bg-[#F1F1EC] transition-colors cursor-pointer whitespace-nowrap"
-            title="Return to Facility Overview & reset camera"
-          >
-            <span>THERMOS</span>
-          </button>
-          <span className="h-4 w-px bg-[#ECEEE9]" aria-hidden="true" />
-          <div className="px-2.5 h-8 flex items-center gap-1.5 font-mono text-[10.5px] tabular-nums text-[#52565E] whitespace-nowrap">
-            <span className="hidden sm:inline">{facility.scenarioLabel}</span>
-            <span className="hidden sm:inline text-[#C4C7CE]" aria-hidden="true">
-              ·
-            </span>
-            {(() => {
-              const peakC = Math.max(
-                ...facility.racks.map((r) =>
-                  r.sensorAvailable ? r.simulatedInletC : r.estimatedInletC
-                )
-              );
-              return (
-                <span
-                  className={
-                    peakC >= 30
-                      ? 'text-[#DC2626] font-semibold'
-                      : peakC >= 27.5
-                      ? 'text-[#B45309] font-semibold'
-                      : 'text-[#059669] font-semibold'
-                  }
-                >
-                  Peak {peakC.toFixed(1)}°C
-                </span>
-              );
-            })()}
-          </div>
-          {onOpenResults && (
-            <>
-              <span className="h-4 w-px bg-[#ECEEE9]" aria-hidden="true" />
+      {/* Mobile Slim Top App Bar (44px, <= 15% aggregate sticky budget) */}
+      {isMobile ? (
+        <header
+          data-interactive="true"
+          className={`fixed top-0 inset-x-0 z-20 safe-top bg-white/92 backdrop-blur-md border-b border-[#DCDED8] pointer-events-auto transition-opacity duration-150 ${
+            hasActiveMobileSheet ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`}
+        >
+          <div className="h-11 px-3 flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                onCanvasBackgroundClick();
+                handleResetCamera();
+              }}
+              className="min-h-[44px] pr-2 flex items-center gap-2 text-left cursor-pointer whitespace-nowrap"
+              title="Reset camera and return to Hall"
+            >
+              <span className="text-sm font-bold tracking-tight text-[#18181B]">THERMOS</span>
+              {(() => {
+                const peakC = Math.max(
+                  ...facility.racks.map((r) =>
+                    r.sensorAvailable ? r.simulatedInletC : r.estimatedInletC
+                  )
+                );
+                return (
+                  <span
+                    className={`font-mono text-[11px] font-semibold tabular-nums ${
+                      peakC >= 30
+                        ? 'text-[#DC2626]'
+                        : peakC >= 27.5
+                        ? 'text-[#B45309]'
+                        : 'text-[#059669]'
+                    }`}
+                  >
+                    {peakC.toFixed(1)}°C
+                  </span>
+                );
+              })()}
+            </button>
+
+            <div className="flex items-center gap-1 shrink-0">
               <button
                 type="button"
-                onClick={onOpenResults}
-                className="px-2.5 h-8 text-[11px] font-medium text-[#0066FF] hover:bg-[#EFF6FF] transition-colors cursor-pointer whitespace-nowrap"
+                onClick={handleResetCamera}
+                aria-label="Reset 3D camera"
+                className="w-10 h-10 flex items-center justify-center rounded-lg text-[#52565E] hover:text-[#18181B] hover:bg-[#F1F1EC] transition-colors cursor-pointer"
               >
-                Results
+                <RotateCcw className="w-4 h-4" />
               </button>
-            </>
-          )}
-        </div>
+              {onOpenResults && (
+                <button
+                  type="button"
+                  onClick={onOpenResults}
+                  className="min-h-[36px] px-3 rounded-lg bg-[#18181B] text-white text-xs font-semibold whitespace-nowrap cursor-pointer"
+                >
+                  Results
+                </button>
+              )}
+            </div>
+          </div>
+        </header>
+      ) : (
+        /* Restrained Original Desktop Top-Left THERMOS Lockup, Inline Status & Quiet Thermal Key */
+        <div
+          data-interactive="true"
+          className="absolute left-3.5 sm:left-4 top-3.5 z-20 flex flex-col items-start gap-1.5 pointer-events-auto"
+        >
+          <div className="flex items-center bg-white/92 border border-[#DFE2DC] rounded-md shadow-[0_1px_4px_rgba(24,24,27,0.06)] overflow-hidden">
+            <button
+              type="button"
+              onClick={() => {
+                onCanvasBackgroundClick();
+                handleResetCamera();
+              }}
+              className="px-2.5 h-8 flex items-center gap-1.5 text-xs font-bold tracking-tight text-[#18181B] hover:bg-[#F1F1EC] transition-colors cursor-pointer whitespace-nowrap"
+              title="Return to Facility Overview & reset camera"
+            >
+              <span>THERMOS</span>
+            </button>
+            <span className="h-4 w-px bg-[#ECEEE9]" aria-hidden="true" />
+            <div className="px-2.5 h-8 flex items-center gap-1.5 font-mono text-[10.5px] tabular-nums text-[#52565E] whitespace-nowrap">
+              <span>{facility.scenarioLabel}</span>
+              <span className="text-[#C4C7CE]" aria-hidden="true">
+                ·
+              </span>
+              {(() => {
+                const peakC = Math.max(
+                  ...facility.racks.map((r) =>
+                    r.sensorAvailable ? r.simulatedInletC : r.estimatedInletC
+                  )
+                );
+                return (
+                  <span
+                    className={
+                      peakC >= 30
+                        ? 'text-[#DC2626] font-semibold'
+                        : peakC >= 27.5
+                        ? 'text-[#B45309] font-semibold'
+                        : 'text-[#059669] font-semibold'
+                    }
+                  >
+                    Peak {peakC.toFixed(1)}°C
+                  </span>
+                );
+              })()}
+            </div>
+            {onOpenResults && (
+              <>
+                <span className="h-4 w-px bg-[#ECEEE9]" aria-hidden="true" />
+                <button
+                  type="button"
+                  onClick={onOpenResults}
+                  className="px-2.5 h-8 text-[11px] font-medium text-[#0066FF] hover:bg-[#EFF6FF] transition-colors cursor-pointer whitespace-nowrap"
+                >
+                  Results
+                </button>
+              </>
+            )}
+            {onLockScreen && (
+              <>
+                <span className="h-4 w-px bg-[#ECEEE9]" aria-hidden="true" />
+                <button
+                  type="button"
+                  onClick={onLockScreen}
+                  aria-label="Lock THERMOS screen"
+                  title="Return to THERMOS Lock Screen"
+                  className="px-2 h-8 flex items-center justify-center text-[#52565E] hover:text-[#18181B] hover:bg-[#F1F1EC] transition-colors cursor-pointer"
+                >
+                  <Lock className="w-3.5 h-3.5" />
+                </button>
+              </>
+            )}
+          </div>
 
-        {/* Quiet Unboxed 1-Line Thermal Key */}
-        <div className="hidden sm:flex items-center gap-2.5 px-1 text-[10px] text-[#52565E] font-medium select-none">
-          <span className="inline-flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-[#10B981]" />
-            <span>Normal &lt;27.5°</span>
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-[#F59E0B]" />
-            <span>Warming 27.5–30°</span>
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full bg-[#EF4444]" />
-            <span>Overheating ≥30°</span>
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <span className="w-2 h-2 rounded-full border border-[#0066FF] bg-[#EFF6FF]" />
-            <span>Offline (Est.)</span>
-          </span>
+          {/* Quiet Unboxed 1-Line Thermal Key */}
+          <div className="flex items-center gap-2.5 px-1 text-[10px] text-[#52565E] font-medium select-none">
+            <span className="inline-flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-[#10B981]" />
+              <span>Normal &lt;27.5°</span>
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-[#F59E0B]" />
+              <span>Warming 27.5–30°</span>
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-[#EF4444]" />
+              <span>Overheating ≥30°</span>
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full border border-[#0066FF] bg-[#EFF6FF]" />
+              <span>Offline (Est.)</span>
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Bottom-Left Discreet Camera Controls */}
-      <div
-        data-interactive="true"
-        className={`absolute left-3.5 sm:left-4 bottom-3 z-20 flex items-center pointer-events-auto transition-opacity duration-150 ${
-          isMobile && hasActiveMobileSheet ? 'opacity-0 pointer-events-none' : 'opacity-100'
-        }`}
-      >
-        <div className="flex items-center bg-white/92 border border-[#DFE2DC] rounded-md shadow-[0_1px_4px_rgba(24,24,27,0.05)] overflow-hidden">
-          <button
-            type="button"
-            onClick={handleZoomIn}
-            aria-label="Zoom in"
-            className={`${
-              isCoarsePointer || isMobile ? 'w-9 h-9' : 'p-1.5'
-            } flex items-center justify-center text-[#52565E] hover:text-[#18181B] hover:bg-[#F1F1EC] transition-colors cursor-pointer`}
-          >
-            <ZoomIn className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={handleZoomOut}
-            aria-label="Zoom out"
-            className={`${
-              isCoarsePointer || isMobile ? 'w-9 h-9' : 'p-1.5'
-            } flex items-center justify-center text-[#52565E] hover:text-[#18181B] hover:bg-[#F1F1EC] border-l border-[#ECEEE9] transition-colors cursor-pointer`}
-          >
-            <ZoomOut className="w-3.5 h-3.5" />
-          </button>
-          <button
-            type="button"
-            onClick={handleResetCamera}
-            aria-label="Reset camera position"
-            className={`${
-              isCoarsePointer || isMobile ? 'w-9 h-9' : 'p-1.5'
-            } flex items-center justify-center text-[#52565E] hover:text-[#18181B] hover:bg-[#F1F1EC] border-l border-[#ECEEE9] transition-colors cursor-pointer`}
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
+      {/* Bottom-Left Discreet Camera Controls (Desktop/Tablet only; phones use touch pinch + top reset) */}
+      {!isMobile && (
+        <div
+          data-interactive="true"
+          className="absolute left-3.5 sm:left-4 bottom-3 z-20 flex items-center pointer-events-auto"
+        >
+          <div className="flex items-center bg-white/92 border border-[#DFE2DC] rounded-md shadow-[0_1px_4px_rgba(24,24,27,0.05)] overflow-hidden">
+            <button
+              type="button"
+              onClick={handleZoomIn}
+              aria-label="Zoom in"
+              className={`${
+                isCoarsePointer ? 'w-9 h-9' : 'p-1.5'
+              } flex items-center justify-center text-[#52565E] hover:text-[#18181B] hover:bg-[#F1F1EC] transition-colors cursor-pointer`}
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={handleZoomOut}
+              aria-label="Zoom out"
+              className={`${
+                isCoarsePointer ? 'w-9 h-9' : 'p-1.5'
+              } flex items-center justify-center text-[#52565E] hover:text-[#18181B] hover:bg-[#F1F1EC] border-l border-[#ECEEE9] transition-colors cursor-pointer`}
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={handleResetCamera}
+              aria-label="Reset camera position"
+              className={`${
+                isCoarsePointer ? 'w-9 h-9' : 'p-1.5'
+              } flex items-center justify-center text-[#52565E] hover:text-[#18181B] hover:bg-[#F1F1EC] border-l border-[#ECEEE9] transition-colors cursor-pointer`}
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
