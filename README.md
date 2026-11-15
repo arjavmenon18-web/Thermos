@@ -110,3 +110,4 @@ The application will be live at `http://localhost:3000`.
 2. **Simplified Fluid Dynamics**: The thermal model uses a 12-minute first-order response with lumped cross-coupling rather than a full 3D Computational Fluid Dynamics (CFD) solver.
 3. **Thermoelectric Efficiency**: Real-world low-temperature solid-state TEGs exhibit low figures of merit ($ZT \approx 0.8$), harvesting milliwatts to a few watts. They cannot power the IT servers or eliminate data centre grid electricity draw.
 4. **Demonstration Threshold**: The 30°C temperature threshold is an illustrative operational boundary chosen for competition demonstration, not a universal hardware failure point.
+5. .
